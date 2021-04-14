@@ -27,9 +27,11 @@
 *.lib
 
 # Executables
+*.ex
 *.exe
 *.out
 *.app
 
-# BoxLib
-BoxLib
+# Build dir
+tmp_build_dir
+
