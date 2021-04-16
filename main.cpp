@@ -4,25 +4,20 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParmParse.H>
 
-//using namespace amrex;
 
 void launchKernels(amrex::MultiFab* mf, amrex::Vector<int>* runOnGpu)
 {
     BL_PROFILE_VAR("launchKernels", blp);
-
+    
+    // Todo:
+    // Load balance according to list of [[cost_gpu_1, cost_cpu_1], [cost_gpu_2, cost_cpu_2], ... ]
+    // Run with computed distribution mapping
+    // Need to control whether executing on CPU or GPU
+    
+    // Seems safeguard only makes a differene called from outside
     amrex::Gpu::LaunchSafeGuard lsg(false);
     for (amrex::MFIter mfi(*mf, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi)
-    {
-        // Launch LaunchSafeGuard object
-        if ((*runOnGpu)[mfi.index()] == 1)
-        {
-            amrex::Gpu::LaunchSafeGuard lsg(true);
-        }
-        else if ((*runOnGpu)[mfi.index()] == 0)
-        {
-            amrex::Gpu::LaunchSafeGuard lsg(false);
-        }
-        
+    {   
         // Then call right function RunOn::Device or RunOn::Host
         const amrex::Box& bx = mfi.tilebox();
         
@@ -68,14 +63,6 @@ int main (int argc, char* argv[])
 
     // Set the runOnGpu decisions
     amrex::Vector<int> runOnGpu(ba.size(), 1);
-
-
-    // Todo:
-    // Measure costs on GPU and CPU
-    // Load balance according to 'multidimensional dm'
-    // Run with computed distribution mapping
-    // compared to CPU only, GPU only
-    // make sure instrumenting the runtime appropriately
     
     launchKernels(&mf, &runOnGpu);
     
