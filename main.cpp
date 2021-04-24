@@ -1,5 +1,6 @@
 #include <AMReX.H>
 #include <AMReX_Gpu.H>
+#include <AMReX_BaseFab.H>
 #include <AMReX_GpuControl.H>
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParmParse.H>
@@ -10,29 +11,36 @@ void launchKernels(amrex::MultiFab* mf, amrex::Vector<int>* runOnGpu)
 {
     BL_PROFILE_VAR("launchKernels", blp);
 
-    amrex::Gpu::LaunchSafeGuard lsg(false);
+    //amrex::Gpu::LaunchSafeGuard lsg(false);
+    
     for (amrex::MFIter mfi(*mf, amrex::TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-        // Launch LaunchSafeGuard object
-        if ((*runOnGpu)[mfi.index()] == 1)
-        {
-            amrex::Gpu::LaunchSafeGuard lsg(true);
-        }
-        else if ((*runOnGpu)[mfi.index()] == 0)
-        {
-            amrex::Gpu::LaunchSafeGuard lsg(false);
-        }
+        amrex::Gpu::FuseSafeGuard fsg(false);
         
-        // Then call right function RunOn::Device or RunOn::Host
         const amrex::Box& bx = mfi.tilebox();
         
         amrex::Array4<amrex::Real> const& fab = (*mf).array(mfi);
+
+        using namespace amrex;
         
-        amrex::ParallelFor(bx, mf->nComp(),
-                           [=] AMREX_GPU_DEVICE (int i, int j, int k, int n)
-                           {
-                               fab(i,j,k,n) += 1.;
-                           });        
+        amrex::RunOn run_on;
+        // if ((*runOnGpu)[mfi.index()] == 1) {
+        //     amrex::Print() << "the device!\n";
+        //     run_on = amrex::RunOn::Device;
+        // }
+        // else {
+        //     amrex::Print() << "the host!\n";
+        //     run_on = amrex::RunOn::Host;
+        // }
+        run_on = ((*runOnGpu)[mfi.index()] == 1)? amrex::RunOn::Device : amrex::RunOn::Host;
+            
+
+        //AMREX_HOST_DEVICE_PARALLEL_FOR_4D(bx, mf->nComp(), i, j, k, n,
+        AMREX_HOST_DEVICE_PARALLEL_FOR_4D_FLAG(run_on, bx, mf->nComp(), i, j, k, n,
+        {
+            fab(i,j,k,n) += 1.;
+            //d(i,j,k,n+destcomp) = s(i+offset.x,j+offset.y,k+offset.z,n+srccomp);
+        });
     }
 }
 
@@ -67,7 +75,7 @@ int main (int argc, char* argv[])
     std::cout << "# of grids: " << ba.size() << '\n';
 
     // Set the runOnGpu decisions
-    amrex::Vector<int> runOnGpu(ba.size(), 1);
+    amrex::Vector<int> runOnGpu(ba.size(), 0);
 
 
     // Todo:
@@ -79,7 +87,7 @@ int main (int argc, char* argv[])
     
     launchKernels(&mf, &runOnGpu);
     
-    cudaDeviceSynchronize();
+    //cudaDeviceSynchronize();
     
     amrex::Finalize();
 }
