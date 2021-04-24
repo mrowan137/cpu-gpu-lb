@@ -5,7 +5,6 @@
 #include <AMReX_MultiFab.H>
 #include <AMReX_ParmParse.H>
 
-//using namespace amrex;
 
 void launchKernels(amrex::MultiFab* mf, amrex::Vector<int>* runOnGpu)
 {
