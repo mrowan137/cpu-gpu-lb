@@ -23,22 +23,11 @@ void launchKernels(amrex::MultiFab* mf, amrex::Vector<int>* runOnGpu)
         using namespace amrex;
         
         amrex::RunOn run_on;
-        // if ((*runOnGpu)[mfi.index()] == 1) {
-        //     amrex::Print() << "the device!\n";
-        //     run_on = amrex::RunOn::Device;
-        // }
-        // else {
-        //     amrex::Print() << "the host!\n";
-        //     run_on = amrex::RunOn::Host;
-        // }
         run_on = ((*runOnGpu)[mfi.index()] == 1)? amrex::RunOn::Device : amrex::RunOn::Host;
-            
-
-        //AMREX_HOST_DEVICE_PARALLEL_FOR_4D(bx, mf->nComp(), i, j, k, n,
+        
         AMREX_HOST_DEVICE_PARALLEL_FOR_4D_FLAG(run_on, bx, mf->nComp(), i, j, k, n,
         {
             fab(i,j,k,n) += 1.;
-            //d(i,j,k,n+destcomp) = s(i+offset.x,j+offset.y,k+offset.z,n+srccomp);
         });
     }
 }
